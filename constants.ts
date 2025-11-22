@@ -1,2 +1,2 @@
 export const TELEGRAM_API = 'https://api.telegram.org'
-export const DEEPSEEK_API = 'https://api.deepseek.com/v1'
+export const GROQ_API = 'https://api.groq.com/openai/v1'; 

@@ -58,14 +58,17 @@ export class TelegramService{
         }
     }
 
-   private renderProgress(percent: number):string{
-    const totalBlocks = 10 
-    const blockChar = '🟦'
-    const emptyBlockChar =  '⬜'
+  private renderProgress(percent: number): string {
+    const totalBlocks = 10;
+    const blockChar = '🟦';
+    const emptyBlockChar = '⬜️';
     
-    const filedBlocks = Math.max(1, Math.round((percent / 100)) * totalBlocks)
-    const emptyBlocks = totalBlocks - filedBlocks
+    const filledBlocks = Math.max(1, Math.round((percent / 100) * totalBlocks));
+    const emptyBlocks = totalBlocks - filledBlocks;
 
-    return `🔄Прогресс [${blockChar.repeat(filedBlocks)}${emptyBlockChar.repeat(emptyBlocks)}] ${percent}%`
-   }
+    return `🔄 Обработка аудио...\n` +
+           `┏━━━━━━━━━━━━━━━━━━━━┓\n` +
+           `┃${blockChar.repeat(filledBlocks)}${emptyBlockChar.repeat(emptyBlocks)}┃ ${percent}%\n` +
+           `┗━━━━━━━━━━━━━━━━━━━━┛`;
+    }
 }
