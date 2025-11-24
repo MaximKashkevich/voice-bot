@@ -38,7 +38,8 @@ export class AiService {
             }
         }
 
-        const preparedText = segments.map(({content}) => content).join('\n')
+        // 👇 ПЕРЕДАВАЙ В AI РЕАЛЬНЫЕ ВРЕМЕННЫЕ МЕТКИ!
+        const preparedText = segments.map(seg => `[${seg.time}] ${seg.content}`).join('\n\n');
 
         const systemMessage = TIMESTAMP_SYSTEM_PROMPT
         const userMessage = buildTimestampUserPrompt(preparedText)
@@ -71,8 +72,21 @@ export class AiService {
         const aiTimestamps = response.data.choices[0].message.content;
 
         return {
-            timestamps: aiTimestamps,
+            timestamps: this.formatTimestampsWithLinks(aiTimestamps, audioDurationSec),
             cost: "0.00"
         };
+    }
+
+    private formatTimestampsWithLinks(timestamps: string, duration: number): string {
+        const lines = timestamps.split('\n').filter(line => line.trim());
+        
+        return lines.map(line => {
+            const timeMatch = line.match(/(\d{1,2}:\d{2})/);
+            if (timeMatch) {
+                const time = timeMatch[1];
+                return `${line}`;
+            }
+            return line;
+        }).join('\n');
     }
 }
