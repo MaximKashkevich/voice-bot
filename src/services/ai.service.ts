@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import axios from "axios";
+import { buildTimestampUserPrompt, TIMESTAMP_SYSTEM_PROMPT } from "src/prompts/timestamp.prompts";
 
 @Injectable()
 export class AiService {
@@ -36,8 +38,40 @@ export class AiService {
             }
         }
 
+        const preparedText = segments.map(({content}) => content).join('\n')
+
+        const systemMessage = TIMESTAMP_SYSTEM_PROMPT
+        const userMessage = buildTimestampUserPrompt(preparedText)
+
+        const response = await axios.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            {
+                model: 'llama-3.1-8b-instant',
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemMessage
+                    },
+                    {
+                        role: 'user',
+                        content: userMessage
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 1000
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${this.groqToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        const aiTimestamps = response.data.choices[0].message.content;
+
         return {
-            timestamps: segments.map(seg => `${seg.time} ${seg.content}`).join('\n'),
+            timestamps: aiTimestamps,
             cost: "0.00"
         };
     }

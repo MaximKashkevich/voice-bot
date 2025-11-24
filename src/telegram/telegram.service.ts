@@ -1,7 +1,8 @@
 import { InjectBot } from "@grammyjs/nestjs";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Bot, Context } from "grammy";
+import { Api, Bot, Context } from "grammy";
+import { AiService } from "src/services/ai.service";
 import { SpeechService } from "src/services/speech.sevice";
 
 @Injectable()
@@ -11,7 +12,8 @@ export class TelegramService {
     constructor(
         @InjectBot() private readonly bot: Bot<Context>,
         private readonly configService: ConfigService,
-        private readonly speechService: SpeechService
+        private readonly speechService: SpeechService,
+        private readonly aiService: AiService
     ) {
         this.botToken = configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
     }
@@ -19,6 +21,12 @@ export class TelegramService {
     async processVoiceMessage(ctx: Context) {
         const voice = ctx.msg?.voice;
         const duration = voice?.duration;
+
+        // 👇 Проверяем, что duration существует
+        if (!duration) {
+            await ctx.reply('❌ Не удалось определить длительность голосового сообщения');
+            return;
+        }
 
         let progressMessageId: number | undefined;
         let interval: NodeJS.Timeout | undefined;
@@ -45,11 +53,12 @@ export class TelegramService {
                     
                     if (currentChatId && currentMessageId) {
                         try {
-                            await ctx.api.editMessageText(
+                            await this.updateProgress(
+                                ctx.api,
                                 currentChatId,
                                 currentMessageId,
-                                this.renderProgress(percent)
-                            );
+                                percent
+                            )
                         } catch (editError) {
                             console.error('Failed to edit message:', editError);
                         }
@@ -58,18 +67,23 @@ export class TelegramService {
             }, 1000);
 
             const transcription = await this.speechService.transcribeVoice(file.file_path);
+
+            const { cost, timestamps } = await this.aiService.generateTimestamps(transcription, duration)
   
             clearInterval(interval);
             
             if (ctx.chat?.id && progressMessageId) {
-                await ctx.api.editMessageText(
+                await this.updateProgress(
+                    ctx.api,
                     ctx.chat.id,
                     progressMessageId,
-                    "✅ Транскрибация завершена!"
+                    100
                 );
             }
 
-            await ctx.reply(`📝 Распознанный текст:\n${transcription}`);
+            // await ctx.reply(`📝 Распознанный текст:\n${transcription}`);
+            await ctx.reply(`⏰ Таймкоды:\n${timestamps}`);
+            await ctx.reply(`💰 Стоимость обработки: ${cost}`);
 
         } catch (error) {
             clearInterval(interval);
@@ -85,6 +99,15 @@ export class TelegramService {
             
             await ctx.reply('⚠️ Ошибка при обработке голосового сообщения');
         }
+    }
+
+    private async updateProgress(
+        api: Api,
+        chatId: number,
+        messageId: number,
+        percent: number
+    ){
+        await api.editMessageText(chatId, messageId, this.renderProgress(percent))
     }
 
     private renderProgress(percent: number): string {

@@ -15,7 +15,7 @@ import { SpeechModule } from "src/services/speech.module";
                  token: configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN')
             })
         }),
-        SpeechModule
+        SpeechModule,
     ],
     providers: [TelegramUpdate, TelegramService, SpeechModule]
 })
